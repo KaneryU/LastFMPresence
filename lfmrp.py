@@ -184,7 +184,7 @@ def checkerThread(runByUI = False):
                     pauseSignal.emit()
         except Exception as e:
             if runByUI:
-                createError("An error has occured", e)
+                createError("An error has occured", str(e))
             else:
                 raise e
 
