@@ -1,0 +1,18 @@
+!include LogicLib.nsh
+!define VERSION "1.0.0"
+Name "Last.fm Rich Presence ${VERSION}"
+OutFile "Last.fm RPC Installer - ${VERSION}.exe"
+
+
+RequestExecutionLevel user
+Page license
+Page components
+Page directory
+Page instfiles
+UninstPage uninstConfirm
+UninstPage instfiles
+
+Section "Base Application" section_index_output
+    # WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "MyAppName" '"$InstDir\MyApp.exe"'
+    
+SectionEnd

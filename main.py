@@ -11,6 +11,8 @@ import discordrp
 #local imports
 import lfmrp
 
+def updateCheck():
+    GITHUB_API_URL = "https://api.github.com/repos/kaneryu/LastFMRichPresence/releases/latest"
 
 class DownloadThread(QThread):
     signal = Signal(str)
@@ -22,7 +24,7 @@ class DownloadThread(QThread):
 
     def run(self):
         if self.url == "default":
-            coverPath = "./nocover.png"
+            coverPath = "./assets/nocover.png"
         else:
             coverPath = f"./cover{self.index}.png"
             with open(coverPath, "wb") as f:
@@ -142,13 +144,14 @@ class MainWindow(QMainWindow):
         self.setMenuBar(self.menuBar_)
     @Slot()
     def songChanged(self, current: dict):
-        if self.visibleRegion().isEmpty():
-            if not current["track"] == "Nothing":
-                self.currentRaw = current
-            else:
-                self.currentRaw = self.empty
-            return
-
+        if not current["track"] == "Nothing":
+            self.currentRaw = current
+        else:
+            self.currentRaw = self.empty
+        
+        # Delete the extra songwidget at the bottom of the layout
+        widget_to_delete = self.songWidgets.pop(-1)
+        widget_to_delete.deleteLater()
 
         # Create a new songWidget for the current song
         new_song_widget = songWidget(self.currentRaw, 0)
@@ -163,10 +166,7 @@ class MainWindow(QMainWindow):
         for i, song_widget in enumerate(self.songWidgets):
             song_widget.index = i
 
-        # Delete any songWidget whose index is greater than 4
-        if len(self.songWidgets) > 5:
-            widget_to_delete = self.songWidgets.pop(-1)
-            widget_to_delete.deleteLater()
+
     
     @Slot()
     def checked(self, wait: float):
@@ -193,7 +193,6 @@ class MainWindow(QMainWindow):
         pauseAction.setEnabled(True)
     
     def showEvent(self, event):
-        self.songChanged(self.currentRaw)
         super().showEvent(event)
     
     def hideEvent(self, event):
@@ -210,11 +209,20 @@ class MainWindow(QMainWindow):
     def realClose(self):
         app.exit()
         
+def createError(title, text):
+    error = QMessageBox()
+    error.setWindowTitle(title)
+    error.setText(text)
+    error.setIcon(QMessageBox.Icon.Critical)
+    error.exec()
+    app.exit()
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    lfmrp.createError = createError
     window = MainWindow()
     window.setWindowIcon(QIcon("assets/Icon.png"))
-    
+    app.setWindowIcon(QIcon("assets/Icon.png"))
     
     pauseAction = QAction("Pause")
     exitAction = QAction("Exit")

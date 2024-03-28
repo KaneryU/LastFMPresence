@@ -1,0 +1,36 @@
+{
+    "comment": "",
+    "window": {
+        "windowTitle": "Last.fm Rich Presence"
+    },
+    "statusBar": {
+        "justChecked": "Checked for song change. Waiting {wait} seconds until next check.",
+        "paused": "Paused checking for song changes."
+    },
+    "changeUser": {
+        "inputDialogText": "Enter your Last.fm username:"
+    },
+    "messages": {
+        "closeEvent": {
+            "title": "Last.fm Rich Presence",
+            "text": "Last.fm Rich Presence is still running in the background. To close it, right click the tray icon and select 'Exit'."
+        },
+        "justOpened": {
+            "title": "Last.fm Rich Presence",
+            "text": "Last.fm Rich Presence is running in the background. Right click the tray icon to access the menu."
+        }
+    },
+    "actions": {
+        "pauseAction": "Paused",
+        "exitAction": "Exit",
+        "resumeAction": "Resume",
+        "forceRefreshAction": "Force Refresh",
+        "changeUserAction": "Change User",
+
+        "showWindow": "Show Window",
+        "hideWindow": "Hide Window"
+    },
+    "tray": {
+        "tooltip": "Last.fm Rich Presence"
+    }
+}

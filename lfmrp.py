@@ -5,7 +5,7 @@ import discordrp
 from PySide6.QtCore import Signal
 from math import floor
 
-username = "kaneryu"
+username = ""
 APIKEY = "cac7f93b7adb2568060f7a5083686233"
 APIROOT = "http://ws.audioscrobbler.com/2.0/"
 METHOD = "user.getrecenttracks"
@@ -51,7 +51,7 @@ def convert_ms_to_min_sec(milliseconds):
 def get_now_playing(user: str):
     params = {"user": user}
     response = lastFMRequest(params, METHOD)
-
+    print(response)
     lastPlayed = response["recenttracks"]["track"][0]
     if "@attr" in lastPlayed:
         if lastPlayed["@attr"]["nowplaying"] == "true":
@@ -103,7 +103,7 @@ pauseSignal: Signal = None
 checkedSignal: Signal = None
 lastPlayingHash = ""
 presence: discordrp.Presence = None
-
+createError = None
 paused = False
 
 def forceUpdate():
@@ -131,91 +131,106 @@ def checkerThread(runByUI = False):
     global lastPlayingHash
     lastPlaying = ""
     iteratonsSinceLastSongChange = 0
-    createPresence()
+    createPresence(runByUI)
     while True:
-        if not paused:
-            nowPlaying = get_now_playing(username)
-            if nowPlaying:
-                track = nowPlaying["name"]
-                artist = nowPlaying["artist"]["#text"]
-                album = get_track_album(track, artist)
-                try:
-                    length = get_track_length(track, artist) / 1000
-                except:
-                    length = "Unknown"
-                current = {"track": track,
-                        "artist": artist,
-                        "album": album,
-                        "length": length,
-                        "human": f"{artist} - {track}{f", from {album}" if not album == "" else ""}",
-                        "link": get_track_link(track, artist),
-                        "top": f"{track}",
-                        "bottom": f"By {artist}, From {album}" if not album == "" else f"By {artist}",
-                        }
+        try:
+            if not paused:
+                nowPlaying = get_now_playing(username)
+                if nowPlaying:
+                    track = nowPlaying["name"]
+                    artist = nowPlaying["artist"]["#text"]
+                    album = get_track_album(track, artist)
+                    try:
+                        length = get_track_length(track, artist) / 1000
+                    except:
+                        length = "Unknown"
+                    current = {"track": track,
+                            "artist": artist,
+                            "album": album,
+                            "length": length,
+                            "human": f"{artist} - {track}{f", from {album}" if not album == "" else ""}",
+                            "link": get_track_link(track, artist),
+                            "top": f"{track}",
+                            "bottom": f"By {artist}, From {album}" if not album == "" else f"By {artist}",
+                            }
+
+                else:
+                    track = ""
+                    artist = ""
+                    current = {"track": None, "artist": "Nothing", "album": "Nothing", "length": "Nothing", "human": "Nothing", "link": "https://example.com", "top": "Nothing", "bottom": "Nothing"}
                 
+                cover_link_ = get_song_cover_link(track, artist, nowPlaying)
+                cover_link = "default" if not cover_link_ else cover_link_
+                current.update({"coverInternet": cover_link})
+                if not lastPlayingHash == hash(json.dumps(current)):
+                    # if track changed
 
-            else:
-                track = ""
-                artist = ""
-                current = {"track": None, "artist": "Nothing", "album": "Nothing", "length": "Nothing", "human": "Nothing", "link": "https://example.com", "top": "Nothing", "bottom": "Nothing"}
-            
-            cover_link_ = get_song_cover_link(track, artist, nowPlaying)
-            cover_link = "default" if not cover_link_ else cover_link_
-            current.update({"coverInternet": cover_link})
-            if not lastPlayingHash == hash(json.dumps(current)):
-                # if track changed
-
-                print(f"changed song to {current['human']}")
+                    print(f"changed song to {current['human']}")
+                    if runByUI:
+                        songChangeSignal.emit(current)
+                    iteratonsSinceLastSongChange = 0
+                    
+                    setPresence(current, runByUI)
+                
+                lastPlayingHash = hash(json.dumps(current))
+                iteratonsSinceLastSongChange += 1
+                print(f"checked - waiting {min(iteratonsSinceLastSongChange / 2, 10):.2f} seconds")
                 if runByUI:
-                    songChangeSignal.emit(current)
-                iteratonsSinceLastSongChange = 0
+                    checkedSignal.emit(float(f"{min(iteratonsSinceLastSongChange / 2, 10):.2f}"))
                 
-                setPresence(current)
-            
-            lastPlayingHash = hash(json.dumps(current))
-            iteratonsSinceLastSongChange += 1
-            print(f"checked - waiting {min(iteratonsSinceLastSongChange / 2, 10):.2f} seconds")
+                time.sleep(min(iteratonsSinceLastSongChange / 2, 10))
+            elif runByUI:
+                if (time.time()) % 2 == 0: # every 2ish seconds
+                    pauseSignal.emit()
+        except Exception as e:
             if runByUI:
-                checkedSignal.emit(float(f"{min(iteratonsSinceLastSongChange / 2, 10):.2f}"))
-            
-            time.sleep(min(iteratonsSinceLastSongChange / 2, 10))
-        elif runByUI:
-            if (time.time()) % 2 == 0: # every 2ish seconds
-                pauseSignal.emit()
-            
-            
-def createPresence():
-    global presence
-    presence = discordrp.Presence("1221181347071000637")
+                createError("An error has occured", e)
+            else:
+                raise e
 
-def setPresence(currentRaw):
+            
+            
+def createPresence(runByUi):
+    global presence
+    try:
+        presence = discordrp.Presence("1221181347071000637")
+    except Exception as e:
+        if runByUi:
+            createError("There was an error creating the rich prescence", "There was an error creating the rich prescence. The application will now exit")
+        else:
+            raise e
+        
+def setPresence(currentRaw, runByUI):
     global presence
     if presence == None:
-        createPresence()
-    
-    if currentRaw["track"] == None:
-        presence.clear()
-        return
-    
-    presence.set(
-        {
-            "state": currentRaw["bottom"],
-            "details": currentRaw["top"],
-            "timestamps": {
-                "start": int(time.time()),
-            },
-            "assets": {
-                "large_image": currentRaw["coverInternet"], 
-                "large_text": "Song cover",
-            },
-            "buttons": [
-                {
-                    "label": "Link",
-                    "url": currentRaw["link"],
-                }
-            ],
-        }
-    )
+        createPresence(runByUI)
+    try:
+        if currentRaw["track"] == None:
+            presence.clear()
+            return
+        
+        presence.set(
+            {
+                "state": currentRaw["bottom"],
+                "details": currentRaw["top"],
+                "timestamps": {
+                    "start": int(time.time()),
+                },
+                "assets": {
+                    "large_image": currentRaw["coverInternet"], 
+                    "large_text": "Song cover",
+                },
+                "buttons": [
+                    {
+                        "label": "Link",
+                        "url": currentRaw["link"],
+                    }
+                ],
+            }
+        )
+    except Exception as e:
+        if runByUI:
+            createError("There was an error setting the presence", "There was an error setting the presence. The application will now exit.")
 
 if __name__ == "__main__":
     checkerThread()

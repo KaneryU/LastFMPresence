@@ -1,4 +1,4 @@
 /cover0.png
-/installer.py
-/nocover.png
-/__pycache__
+__pycache__/
+/*installer*.exe
+.venv/
