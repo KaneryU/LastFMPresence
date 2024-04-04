@@ -202,8 +202,8 @@ class MainWindow(QMainWindow):
         
         
         
-        checkThread = threading.Thread(target=lfmrp.checkerThread, daemon=True, args=(True,))
-        checkThread.start()
+        self.checkThread = threading.Thread(target=lfmrp.checkerThread, daemon=True, args=(True,))
+        self.checkThread.start()
         
         self.menuBar_ = self.menuBar()
         
@@ -298,6 +298,10 @@ class MainWindow(QMainWindow):
         event.ignore()
     
     def realClose(self):
+        lfmrp.running = False
+        self.hide()
+        systemTray.hide()
+        self.checkThread.join()
         app.exit()
     
     @Slot()

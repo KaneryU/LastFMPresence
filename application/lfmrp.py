@@ -111,6 +111,7 @@ lastPlayingHash = ""
 presence: discordrp.Presence = None
 createError: Signal = None
 paused: bool = False
+running: bool = True
 
 def forceUpdate():
     global lastPlayingHash
@@ -138,7 +139,7 @@ def checkerThread(runByUI = False):
     lastPlaying = ""
     iteratonsSinceLastSongChange = 0
     createPresence(runByUI)
-    while True:
+    while running:
         try:
             if not paused:
                 nowPlaying = get_now_playing(username)
