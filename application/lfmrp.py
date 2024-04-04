@@ -2,18 +2,24 @@ import requests
 import json
 import time
 import discordrp
+import signals
 from PySide6.QtCore import Signal
 from math import floor
 
-username = ""
+username = "kaneryu"
 APIKEY = "cac7f93b7adb2568060f7a5083686233"
 APIROOT = "http://ws.audioscrobbler.com/2.0/"
 METHOD = "user.getrecenttracks"
 
 def lastFMRequest(params: dict, method: str):
-    params.update({"api_key": APIKEY, "format": "json", "method": method})
-    response = requests.get(APIROOT, params=params)
-    return json.loads(response.text)
+    try:
+        params.update({"api_key": APIKEY, "format": "json", "method": method})
+        response = requests.get(APIROOT, params=params)
+        return json.loads(response.text)
+    except Exception as e:
+        print("Threw error " + str(e))
+        createError("An error has occured", str(e))
+        pause()
 
 
 def get_song_cover_link(track: str, artist: str, nowPlaying: dict = {None: None}):
@@ -34,6 +40,7 @@ def get_song_cover_link(track: str, artist: str, nowPlaying: dict = {None: None}
     try:
         return response["track"]["album"]["image"][-1]["#text"]
     except:
+        print("Get song cover link failed completely")
         return ""
 
 
@@ -51,7 +58,6 @@ def convert_ms_to_min_sec(milliseconds):
 def get_now_playing(user: str):
     params = {"user": user}
     response = lastFMRequest(params, METHOD)
-    print(response)
     lastPlayed = response["recenttracks"]["track"][0]
     if "@attr" in lastPlayed:
         if lastPlayed["@attr"]["nowplaying"] == "true":
@@ -78,6 +84,7 @@ def get_track_length(track: str, artist: str):
         response = lastFMRequest(params, "track.getInfo")
         return int(response["track"]["duration"])
     except:
+        print("Get track length failed")
         return 0
 
 def get_track_album(track: str, artist: str):
@@ -88,6 +95,7 @@ def get_track_album(track: str, artist: str):
             return ""
         return response["track"]["album"]["title"]
     except:
+        print("Get album failed")
         return ""
         
 def get_track_link(track: str, artist: str):
@@ -96,15 +104,13 @@ def get_track_link(track: str, artist: str):
         response = lastFMRequest(params, "track.getInfo")
         return response["track"]["url"]
     except:
-        return "https://failed.com"
-
-songChangeSignal: Signal = None
-pauseSignal: Signal = None
-checkedSignal: Signal = None
+        print("get lenth failed")
+        return ""
+    
 lastPlayingHash = ""
 presence: discordrp.Presence = None
-createError = None
-paused = False
+createError: Signal = None
+paused: bool = False
 
 def forceUpdate():
     global lastPlayingHash
@@ -148,7 +154,7 @@ def checkerThread(runByUI = False):
                             "artist": artist,
                             "album": album,
                             "length": length,
-                            "human": f"{artist} - {track}{f", from {album}" if not album == "" else ""}",
+                            #"human": f"{artist} - {track}{", from " + str(album) if not album == "" else ""}",
                             "link": get_track_link(track, artist),
                             "top": f"{track}",
                             "bottom": f"By {artist}, From {album}" if not album == "" else f"By {artist}",
@@ -165,9 +171,9 @@ def checkerThread(runByUI = False):
                 if not lastPlayingHash == hash(json.dumps(current)):
                     # if track changed
 
-                    print(f"changed song to {current['human']}")
+                    print(f"changed song to {current['top']} \n{current['bottom']}")
                     if runByUI:
-                        songChangeSignal.emit(current)
+                        signals.signals_.updateSignal.emit(current)
                     iteratonsSinceLastSongChange = 0
                     
                     setPresence(current, runByUI)
@@ -176,14 +182,15 @@ def checkerThread(runByUI = False):
                 iteratonsSinceLastSongChange += 1
                 print(f"checked - waiting {min(iteratonsSinceLastSongChange / 2, 10):.2f} seconds")
                 if runByUI:
-                    checkedSignal.emit(float(f"{min(iteratonsSinceLastSongChange / 2, 10):.2f}"))
+                    signals.signals_.checkedSignal.emit(float(f"{min(iteratonsSinceLastSongChange / 2, 10):.2f}"))
                 
                 time.sleep(min(iteratonsSinceLastSongChange / 2, 10))
             elif runByUI:
                 if (time.time()) % 2 == 0: # every 2ish seconds
-                    pauseSignal.emit()
+                    signals.signals_.pauseSignal.emit()
         except Exception as e:
             if runByUI:
+                print("Throwing error " + str(e))
                 createError("An error has occured", str(e))
             else:
                 raise e
@@ -192,14 +199,48 @@ def checkerThread(runByUI = False):
             
 def createPresence(runByUi):
     global presence
+    
     try:
         presence = discordrp.Presence("1221181347071000637")
     except Exception as e:
+        signals.signals_.handleErrorSignal.emit(signals.Errors.presenceCreationError)
+        return False
+    
+    return True
+
+def createSetPresence(currentRaw, runByUi):
+    global presence
+    try:
+        presence = discordrp.Presence("1221181347071000637")
+        pres = {
+                "state": currentRaw["bottom"],
+                "details": currentRaw["top"],
+                "timestamps": {
+                    "start": int(time.time()),
+                },
+                "assets": {
+                    "large_image": currentRaw["coverInternet"], 
+                    "large_text": "Song cover",
+                }
+        }
+        
+        if not currentRaw["link"] == "":
+            pres.update({"buttons": [
+                {
+                    "label": "Link",
+                    "url": currentRaw["link"],
+                }
+            ]})
+            
+        presence.set(pres)
+        
+    except Exception as e:
         if runByUi:
+            print("Throwing error " + str(e))
             createError("There was an error creating the rich prescence", "There was an error creating the rich prescence. The application will now exit")
         else:
             raise e
-        
+
 def setPresence(currentRaw, runByUI):
     global presence
     if presence == None:
@@ -209,8 +250,7 @@ def setPresence(currentRaw, runByUI):
             presence.clear()
             return
         
-        presence.set(
-            {
+        pres = {
                 "state": currentRaw["bottom"],
                 "details": currentRaw["top"],
                 "timestamps": {
@@ -219,18 +259,21 @@ def setPresence(currentRaw, runByUI):
                 "assets": {
                     "large_image": currentRaw["coverInternet"], 
                     "large_text": "Song cover",
-                },
-                "buttons": [
-                    {
-                        "label": "Link",
-                        "url": currentRaw["link"],
-                    }
-                ],
-            }
-        )
-    except Exception as e:
-        if runByUI:
-            createError("There was an error setting the presence", "There was an error setting the presence. The application will now exit.")
-
+                }
+        }
+        
+        if not currentRaw["link"] == "":
+            pres.update({"buttons": [
+                {
+                    "label": "Link",
+                    "url": currentRaw["link"],
+                }
+            ]})
+            
+        presence.set(pres)
+        
+    except Exception:
+        createSetPresence(currentRaw, runByUI)
+        
 if __name__ == "__main__":
     checkerThread()
