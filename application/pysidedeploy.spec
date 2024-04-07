@@ -11,7 +11,7 @@ exec_directory = .
 # path to .pyproject project file
 project_file = 
 # application icon
-icon = C:\Users\866803\LastFMPresence\.venv\Lib\site-packages\PySide6\scripts\deploy_lib\pyside_icon.ico
+icon = C:\Users\866803\LastFMPresence\application\assets\Icon.ico
 
 [python]
 # python path
@@ -19,7 +19,7 @@ python_path = c:\Users\866803\LastFMPresence\.venv\Scripts\python.exe
 # python packages to install
 # ordered-set = increase compile time performance of nuitka packaging
 # zstandard = provides final executable size optimization
-packages = nuitka==1.8.0,ordered_set,zstandard
+packages = nuitka==1.8.0,ordered_set,zstandard,certifi==2024.2.2,charset-normalizer==3.3.2,discord-rich-presence==1.1.0,idna==3.6,requests==2.31.0,urllib3==2.2.1
 # buildozer = for deploying Android application
 android_packages = buildozer==1.5.0,cython==0.29.33
 

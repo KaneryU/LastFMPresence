@@ -1,0 +1,12 @@
+<!DOCTYPE QPH>
+<QPH language="_US">
+<phrase>
+    <source>Test</source>
+    <target>hello</target>
+    <definition>what</definition>
+</phrase>
+<phrase>
+    <source>(New Entry)</source>
+    <target></target>
+</phrase>
+</QPH>

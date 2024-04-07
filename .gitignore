@@ -1,5 +1,9 @@
 /cover0.png
 __pycache__/
 /*installer*.exe
+*.exe
 .venv/
 application/cover0.png
+application/dist/
+application/build/
+application/deployment

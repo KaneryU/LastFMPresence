@@ -19,7 +19,13 @@ import dialogs
 
 def updateCheck():
     GITHUB_API_URL = "https://api.github.com/repos/kaneryu/LastFMRichPresence/releases/latest"
-
+    response = requests.get(GITHUB_API_URL)
+    if response.status_code == 200:
+        data = response.json()
+        if not data["tag_name"] == "v0.1.0":
+            dialog = dialogs.popupNotification("Update available", f"An update is available for Last.fm Rich Presence. You are currently running version v0.1.0, the latest version is {data['tag_name']}. You can download the latest version from the releases page.")
+            dialog.exec()
+    
 with open("./assets/en-US.json") as f:
     lang = json.loads(f.read())  
 
@@ -381,8 +387,7 @@ if __name__ == '__main__':
     
     systemTray.show()
     systemTray.showMessage("Last.fm Rich Presence", "Last.fm Rich Presence is running in the background. Right click the tray icon to access the menu.", icon=QSystemTrayIcon.MessageIcon.Information, msecs=5000)
-    
-    window.show()
+    updateCheck()
     # first run 
     # ask user their username
     # explain usage  

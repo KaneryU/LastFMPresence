@@ -97,6 +97,15 @@ def get_track_album(track: str, artist: str):
     except:
         print("Get album failed")
         return ""
+
+def get_track_album_link(track: str, artist: str):
+    try:
+        params = {"track": track, "artist": artist}
+        response = lastFMRequest(params, "track.getInfo")
+        return response["track"]["album"]["url"]
+    except:
+        print("Get album link failed")
+        return ""
         
 def get_track_link(track: str, artist: str):
     try:
@@ -104,7 +113,7 @@ def get_track_link(track: str, artist: str):
         response = lastFMRequest(params, "track.getInfo")
         return response["track"]["url"]
     except:
-        print("get lenth failed")
+        print("get link failed")
         return ""
     
 lastPlayingHash = ""
@@ -164,11 +173,14 @@ def checkerThread(runByUI = False):
                 else:
                     track = ""
                     artist = ""
-                    current = {"track": None, "artist": "Nothing", "album": "Nothing", "length": "Nothing", "human": "Nothing", "link": "https://example.com", "top": "Nothing", "bottom": "Nothing"}
+                    current = {"track": None, "artist": "Nothing", "album": "Nothing", "length": "Nothing", "human": "Nothing", "link": "", "top": "Nothing", "bottom": "Nothing"}
                 
                 cover_link_ = get_song_cover_link(track, artist, nowPlaying)
                 cover_link = "default" if not cover_link_ else cover_link_
                 current.update({"coverInternet": cover_link})
+                
+                current.update({"albumLink": get_track_album_link(track, artist)})
+                
                 if not lastPlayingHash == hash(json.dumps(current)):
                     # if track changed
 
@@ -190,11 +202,7 @@ def checkerThread(runByUI = False):
                 if (time.time()) % 2 == 0: # every 2ish seconds
                     signals.signals_.pauseSignal.emit()
         except Exception as e:
-            if runByUI:
-                print("Throwing error " + str(e))
-                createError("An error has occured", str(e))
-            else:
-                raise e
+            pass
 
             
             
@@ -208,32 +216,50 @@ def createPresence(runByUi):
         return False
     
     return True
-
+def pureSetPresence(currentRaw):
+    pres = {
+            "state": currentRaw["bottom"],
+            "details": currentRaw["top"],
+            "timestamps": {
+                "start": int(time.time()),
+            },
+            "assets": {
+                "large_image": currentRaw["coverInternet"], 
+                "large_text": "Song cover",
+            }
+    }
+    
+    if not currentRaw["link"] == "":
+        pres.update({"buttons": [
+            {
+                "label": "Song link",
+                "url": currentRaw["link"],
+            }
+        ]})
+    
+    if not currentRaw["albumLink"] == "":
+        if "buttons" in pres:
+            pres["buttons"].append({
+                "label": "Album link",
+                "url": currentRaw["albumLink"],
+            })
+            
+        else:
+            
+            pres.update({"buttons": [
+                {
+                    "label": "Album link",
+                    "url": currentRaw["albumLink"],
+                }
+            ]})
+        
+    presence.set(pres)
+    
 def createSetPresence(currentRaw, runByUi):
     global presence
     try:
         presence = discordrp.Presence("1221181347071000637")
-        pres = {
-                "state": currentRaw["bottom"],
-                "details": currentRaw["top"],
-                "timestamps": {
-                    "start": int(time.time()),
-                },
-                "assets": {
-                    "large_image": currentRaw["coverInternet"], 
-                    "large_text": "Song cover",
-                }
-        }
-        
-        if not currentRaw["link"] == "":
-            pres.update({"buttons": [
-                {
-                    "label": "Link",
-                    "url": currentRaw["link"],
-                }
-            ]})
-            
-        presence.set(pres)
+        pureSetPresence(currentRaw)
         
     except Exception as e:
         if runByUi:
@@ -251,28 +277,7 @@ def setPresence(currentRaw, runByUI):
             presence.clear()
             return
         
-        pres = {
-                "state": currentRaw["bottom"],
-                "details": currentRaw["top"],
-                "timestamps": {
-                    "start": int(time.time()),
-                },
-                "assets": {
-                    "large_image": currentRaw["coverInternet"], 
-                    "large_text": "Song cover",
-                }
-        }
-        
-        if not currentRaw["link"] == "":
-            pres.update({"buttons": [
-                {
-                    "label": "Link",
-                    "url": currentRaw["link"],
-                }
-            ]})
-            
-        presence.set(pres)
-        
+        pureSetPresence(currentRaw)
     except Exception:
         createSetPresence(currentRaw, runByUI)
         
