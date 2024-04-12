@@ -54,7 +54,6 @@ def convert_ms_to_min_sec(milliseconds):
 
 
 
-
 def get_now_playing(user: str):
     params = {"user": user}
     response = lastFMRequest(params, METHOD)
@@ -201,49 +200,50 @@ def checkerThread(runByUI = False):
         try:
             if not paused:
                 nowPlaying = get_now_playing(username)
-                if nowPlaying:
-                    track = nowPlaying["name"]
-                    artist = nowPlaying["artist"]["#text"]
-                    album = get_track_album_title(track, artist)
-                    
-                    # try:
-                    #     length = get_track_length(track, artist) / 1000
-                    # except:
-                    #     length = "Unknown"
-                    
-                    current = {"track": track,
-                            "artist": artist,
-                            "album": album,
-                            #"length": length,
-                            #"human": f"{artist} - {track}{", from " + str(album) if not album == "" else ""}",
-                            "link": get_track_link(track, artist),
-                            "top": f"{track}",
-                            "bottom": f"By {artist}, From {album}" if not album == "" else f"By {artist}",
-                            }
-                    
-                    cover_link_ = get_song_cover_link(track, artist, nowPlaying)
-                    cover_link = "default" if not cover_link_ else cover_link_
-                    current.update({"coverInternet": cover_link})
-                    current.update({"albumLink": get_track_album_link(track, artist)})
-                    
-                else:
-                    track = ""
-                    artist = ""
-                    current = {"track": None, "artist": "Nothing", "album": "Nothing", "length": "Nothing", "human": "Nothing", "link": "", "top": "Nothing", "bottom": "Nothing"}
-                
 
-                
-                if not lastPlayingHash == hash(json.dumps(current)):
+                if not lastPlayingHash == hash(json.dumps(nowPlaying)):
                     # if track changed
-
+                    if nowPlaying:
+                        track = nowPlaying["name"]
+                        artist = nowPlaying["artist"]["#text"]
+                        album = get_track_album_title(track, artist)
+                        
+                        # try:
+                        #     length = get_track_length(track, artist) / 1000
+                        # except:
+                        #     length = "Unknown"
+                        
+                        current = {"track": track,
+                                "artist": artist,
+                                "album": album,
+                                #"length": length,
+                                #"human": f"{artist} - {track}{", from " + str(album) if not album == "" else ""}",
+                                "link": get_track_link(track, artist),
+                                "top": f"{track}",
+                                "bottom": f"By {artist}, From {album}" if not album == "" else f"By {artist}",
+                                }
+                        
+                        cover_link_ = get_song_cover_link(track, artist, nowPlaying)
+                        cover_link = "default" if not cover_link_ else cover_link_
+                        current.update({"coverInternet": cover_link})
+                        current.update({"albumLink": get_track_album_link(track, artist)})
+                        
+                    else:
+                        track = ""
+                        artist = ""
+                        current = {"track": None, "artist": "Nothing", "album": "Nothing", "length": "Nothing", "human": "Nothing", "link": "", "top": "Nothing", "bottom": "Nothing"}
+                        
                     print(f"changed song to {current['top']} \n{current['bottom']}")
+                    
                     if runByUI:
                         signals.signals_.updateSignal.emit(current)
+                        
                     iteratonsSinceLastSongChange = 0
                     
                     setPresence(current, runByUI)
                 
-                lastPlayingHash = hash(json.dumps(current))
+                    lastPlayingHash = hash(json.dumps(nowPlaying))
+                    
                 iteratonsSinceLastSongChange += 1
                 print(f"checked - waiting {min(iteratonsSinceLastSongChange / 2, 10):.2f} seconds")
                 if runByUI:
