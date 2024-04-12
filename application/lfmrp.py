@@ -1,15 +1,19 @@
+# stdlib
 import requests
 import json
 import time
-import discordrp
-import signals
-from PySide6.QtCore import Signal
 from math import floor
 
-username = "kaneryu"
+# ext
+import discordrp
+from PySide6.QtCore import Signal
+
+# local
+import signals
+import settings
+
 APIKEY = "cac7f93b7adb2568060f7a5083686233"
 APIROOT = "http://ws.audioscrobbler.com/2.0/"
-METHOD = "user.getrecenttracks"
 
 def lastFMRequest(params: dict, method: str):
     try:
@@ -54,9 +58,9 @@ def convert_ms_to_min_sec(milliseconds):
 
 
 
-def get_now_playing(user: str):
-    params = {"user": user}
-    response = lastFMRequest(params, METHOD)
+def get_now_playing():
+    params = {"user": settings.settings.username}
+    response = lastFMRequest(params, "user.getrecenttracks")
     lastPlayed = response["recenttracks"]["track"][0]
     if "@attr" in lastPlayed:
         if lastPlayed["@attr"]["nowplaying"] == "true":
@@ -103,7 +107,7 @@ def get_track_album_title(track: str, artist: str):
     
     def get_album_from_now_playing():
         try:
-            nowPlaying = get_now_playing(username)
+            nowPlaying = get_now_playing()
             return nowPlaying["album"]["#text"]
         except:
             return ""
@@ -154,7 +158,7 @@ def get_track_link(track: str, artist: str):
     
     def get_link_from_now_playing():
         try:
-            nowPlaying = get_now_playing(username)
+            nowPlaying = get_now_playing()
             return nowPlaying["url"]
         except:
             return ""
@@ -187,8 +191,8 @@ def resume():
     forceUpdate()
     
 def changeUser(newUsername: str):
-    global username
-    username = newUsername
+    settings.settings.set_username(newUsername)
+    
     forceUpdate()
     
 def checkerThread(runByUI = False):
@@ -199,7 +203,7 @@ def checkerThread(runByUI = False):
     while running:
         try:
             if not paused:
-                nowPlaying = get_now_playing(username)
+                nowPlaying = get_now_playing()
 
                 if not lastPlayingHash == hash(json.dumps(nowPlaying)):
                     # if track changed
@@ -335,4 +339,9 @@ def setPresence(currentRaw, runByUI):
         createSetPresence(currentRaw, runByUI)
         
 if __name__ == "__main__":
+    settings.init_settings()
+    if settings.settings.username == "":
+        user = input("Enter your last.fm username: ")
+        settings.settings.set_username(user)
+    
     checkerThread()

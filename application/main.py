@@ -17,6 +17,7 @@ import lfmrp
 from marq import MarqueeLabel
 import signals
 import dialogs
+import settings
 
 def updateCheck():
     GITHUB_API_URL = "https://api.github.com/repos/kaneryu/LastFMRichPresence/releases/latest"
@@ -207,8 +208,11 @@ class MainWindow(QMainWindow):
         
         self.setCentralWidget(self.container)
         
+        settings.init_settings()
         
-        
+        if settings.settings.username == "":
+            self.changeUser()
+                
         self.checkThread = threading.Thread(target=lfmrp.checkerThread, daemon=True, args=(True,))
         self.checkThread.start()
         
@@ -273,6 +277,10 @@ class MainWindow(QMainWindow):
     @Slot()  
     def changeUser(self):
         inputDialog = QInputDialog()
+        inputDialog.closeEvent = lambda event: event.ignore()
+        inputDialog.setWindowTitle("Change Last.fm User")
+        inputDialog.setWindowIcon(QIcon("assets/Icon.png"))
+        inputDialog.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
         inputDialog.setLabelText("Enter your Last.fm username:")
         inputDialog.textValueSelected.connect(lfmrp.changeUser)
         inputDialog.exec()
@@ -306,9 +314,12 @@ class MainWindow(QMainWindow):
     
     def realClose(self):
         lfmrp.running = False
-        self.hide()
+        
+        self.hide() # hide all traces of the window incase the checkThread takes a while to stop
         systemTray.hide()
         self.checkThread.join()
+        
+        lfmrp.presence.close()
         app.exit()
     
     @Slot()
