@@ -253,7 +253,7 @@ def checkerThread(runByUI = False):
                 if runByUI:
                     signals.signals_.checkedSignal.emit(float(f"{min(iteratonsSinceLastSongChange / 2, 10):.2f}"))
                 
-                time.sleep(min(iteratonsSinceLastSongChange / 2, 10))
+                time.sleep(min(iteratonsSinceLastSongChange / 2, 5))
             elif runByUI:
                 if (time.time()) // 2 == 0: # every 2ish seconds
                     signals.signals_.pausePulseSignal.emit()
