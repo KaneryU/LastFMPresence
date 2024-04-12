@@ -93,15 +93,21 @@ def get_track_album_title(track: str, artist: str):
     # or get the album title from the now playing info
     
     def get_album_from_track_info():
-        params = {"track": track, "artist": artist}
-        response = lastFMRequest(params, "track.getInfo")
-        if not "album" in response["track"]:
+        try:
+            params = {"track": track, "artist": artist}
+            response = lastFMRequest(params, "track.getInfo")
+            if not "album" in response["track"]:
+                return ""
+            return response["track"]["album"]["title"]
+        except:
             return ""
-        return response["track"]["album"]["title"]
     
     def get_album_from_now_playing():
-        nowPlaying = get_now_playing(username)
-        return nowPlaying["album"]["#text"]
+        try:
+            nowPlaying = get_now_playing(username)
+            return nowPlaying["album"]["#text"]
+        except:
+            return ""
     
     try:
         return (get_album_from_track_info() or get_album_from_now_playing())
@@ -139,12 +145,24 @@ def get_track_album_link(track: str, artist: str):
         return ""
         
 def get_track_link(track: str, artist: str):
+    def get_link_from_track_info():
+        try:
+            params = {"track": track, "artist": artist}
+            response = lastFMRequest(params, "track.getInfo")
+            return response["track"]["url"]
+        except:
+            return ""
+    
+    def get_link_from_now_playing():
+        try:
+            nowPlaying = get_now_playing(username)
+            return nowPlaying["url"]
+        except:
+            return ""
     try:
-        params = {"track": track, "artist": artist}
-        response = lastFMRequest(params, "track.getInfo")
-        return response["track"]["url"]
-    except:
-        print("get link failed")
+        return get_link_from_track_info() or get_link_from_now_playing()
+    except Exception as e:
+        print(f"Fet link failed {e}")
         return ""
     
 lastPlayingHash = ""
@@ -187,14 +205,16 @@ def checkerThread(runByUI = False):
                     track = nowPlaying["name"]
                     artist = nowPlaying["artist"]["#text"]
                     album = get_track_album_title(track, artist)
-                    try:
-                        length = get_track_length(track, artist) / 1000
-                    except:
-                        length = "Unknown"
+                    
+                    # try:
+                    #     length = get_track_length(track, artist) / 1000
+                    # except:
+                    #     length = "Unknown"
+                    
                     current = {"track": track,
                             "artist": artist,
                             "album": album,
-                            "length": length,
+                            #"length": length,
                             #"human": f"{artist} - {track}{", from " + str(album) if not album == "" else ""}",
                             "link": get_track_link(track, artist),
                             "top": f"{track}",
