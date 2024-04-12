@@ -4,6 +4,7 @@ import threading
 import ctypes
 import enum
 import json
+import platform
 # import time
 import requests
 #external imports
@@ -342,9 +343,10 @@ class Actions:
 
 
 if __name__ == '__main__':
-    #change icon in taskbar
-    myappid = u'opensource.createthesun.main.pre-release'
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    if platform.system() == "Windows":
+        #change icon in taskbar
+        myappid = u'opensource.createthesun.main.pre-release'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     
     app = QApplication(sys.argv)
     lfmrp.createError = createError

@@ -87,24 +87,55 @@ def get_track_length(track: str, artist: str):
         print("Get track length failed")
         return 0
 
-def get_track_album(track: str, artist: str):
-    try:
+def get_track_album_title(track: str, artist: str):
+    # routes
+    # get the album title from the track info
+    # or get the album title from the now playing info
+    
+    def get_album_from_track_info():
         params = {"track": track, "artist": artist}
         response = lastFMRequest(params, "track.getInfo")
-        if "album" not in response["track"]:
+        if not "album" in response["track"]:
             return ""
         return response["track"]["album"]["title"]
-    except:
-        print("Get album failed")
+    
+    def get_album_from_now_playing():
+        nowPlaying = get_now_playing(username)
+        return nowPlaying["album"]["#text"]
+    
+    try:
+        return (get_album_from_track_info() or get_album_from_now_playing())
+    except Exception as e:
+        print(f"Get album title failed with error: {e}")
         return ""
 
 def get_track_album_link(track: str, artist: str):
+    # routes
+    # get the album link from the track info
+    # or make the album link from the album title and artist
+    
+    def link_from_track_info():
+        try:
+            params = {"track": track, "artist": artist}
+            response = lastFMRequest(params, "track.getInfo")
+            return response["track"]["album"]["url"]
+        except:
+            return ""
+    
+    def link_from_album_title():
+        albumTitle = get_track_album_title(track, artist)
+        if albumTitle == "":
+            return ""
+        else:
+            if " " in f"https://www.last.fm/music/{artist}/{albumTitle.replace(' ', '+')}":
+                return ""
+            
+            return f"https://www.last.fm/music/{artist}/{albumTitle.replace(' ', '+')}"
+    
     try:
-        params = {"track": track, "artist": artist}
-        response = lastFMRequest(params, "track.getInfo")
-        return response["track"]["album"]["url"]
-    except:
-        print("Get album link failed")
+        return link_from_track_info() or link_from_album_title()
+    except Exception as e:
+        print(f"Get album link failed with error {e}")
         return ""
         
 def get_track_link(track: str, artist: str):
@@ -155,7 +186,7 @@ def checkerThread(runByUI = False):
                 if nowPlaying:
                     track = nowPlaying["name"]
                     artist = nowPlaying["artist"]["#text"]
-                    album = get_track_album(track, artist)
+                    album = get_track_album_title(track, artist)
                     try:
                         length = get_track_length(track, artist) / 1000
                     except:
@@ -169,17 +200,18 @@ def checkerThread(runByUI = False):
                             "top": f"{track}",
                             "bottom": f"By {artist}, From {album}" if not album == "" else f"By {artist}",
                             }
-
+                    
+                    cover_link_ = get_song_cover_link(track, artist, nowPlaying)
+                    cover_link = "default" if not cover_link_ else cover_link_
+                    current.update({"coverInternet": cover_link})
+                    current.update({"albumLink": get_track_album_link(track, artist)})
+                    
                 else:
                     track = ""
                     artist = ""
                     current = {"track": None, "artist": "Nothing", "album": "Nothing", "length": "Nothing", "human": "Nothing", "link": "", "top": "Nothing", "bottom": "Nothing"}
                 
-                cover_link_ = get_song_cover_link(track, artist, nowPlaying)
-                cover_link = "default" if not cover_link_ else cover_link_
-                current.update({"coverInternet": cover_link})
-                
-                current.update({"albumLink": get_track_album_link(track, artist)})
+
                 
                 if not lastPlayingHash == hash(json.dumps(current)):
                     # if track changed
@@ -199,8 +231,8 @@ def checkerThread(runByUI = False):
                 
                 time.sleep(min(iteratonsSinceLastSongChange / 2, 10))
             elif runByUI:
-                if (time.time()) % 2 == 0: # every 2ish seconds
-                    signals.signals_.pauseSignal.emit()
+                if (time.time()) // 2 == 0: # every 2ish seconds
+                    signals.signals_.pausePulseSignal.emit()
         except Exception as e:
             pass
 
@@ -216,6 +248,7 @@ def createPresence(runByUi):
         return False
     
     return True
+
 def pureSetPresence(currentRaw):
     pres = {
             "state": currentRaw["bottom"],
