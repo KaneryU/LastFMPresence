@@ -3,6 +3,7 @@ import requests
 import json
 import time
 from math import floor
+import urllib.parse
 
 # ext
 import discordrp
@@ -14,6 +15,72 @@ import settings
 
 APIKEY = "cac7f93b7adb2568060f7a5083686233"
 APIROOT = "http://ws.audioscrobbler.com/2.0/"
+
+def cleanURL(url: str):
+    return urllib.parse.quote_plus(url, safe=":/")
+
+# class BaseError(Exception):
+#     def __init__(self, message: str):
+#         self.message = message
+
+#     def __str__(self):
+#         return self.message
+
+# class PresenceCreationError(BaseError):
+#     def __init__(self):
+#         super().__init__("There was an error creating the rich presence")
+
+# class PresenceSetError(BaseError):
+#     def __init__(self):
+#         super().__init__("There was an error setting the rich presence")
+    
+# class InternetConnectionError(BaseError):
+#     def __init__(self):
+#         super().__init__("There was an error connecting to the internet")
+
+# class LastFMConnectionError(BaseError):
+#     def __init__(self):
+#         super().__init__("There was an error connecting to LastFM")
+
+
+
+# class lastFMContact:
+#     def __init__(self):
+#         self
+    
+#     def checkInternet(self):
+#         try:
+#             requests.get("https://www.google.com")
+#             return True
+#         except:
+#             return False
+
+#     def checkLastFM(self):
+#         try:
+#             requests.get(APIROOT)
+#             return True
+#         except:
+#             return False
+    
+#     def lastFMRequest(self, params: dict, method: str) -> dict:
+#         """Make a request to last.fm. This is a low level function that should not be used by the UI. Use the other functions in this class instead.
+
+#         Args:
+#             params (dict): Parameters
+#             method (str): What method to use
+
+#         Returns:
+#             dict: The response from last.fm
+#         """
+#         if not self.checkInternet():
+#             raise InternetConnectionError()
+
+#         if not self.checkLastFM():
+#             raise LastFMConnectionError()
+        
+#         params.update({"api_key": APIKEY, "format": "json", "method": method})
+#         response = requests.get(APIROOT, params=params)
+#         return json.loads(response.text)
 
 def lastFMRequest(params: dict, method: str):
     try:
@@ -113,7 +180,7 @@ def get_track_album_title(track: str, artist: str):
             return ""
     
     try:
-        return (get_album_from_track_info() or get_album_from_now_playing())
+        return (get_album_from_now_playing() or get_album_from_track_info())
     except Exception as e:
         print(f"Get album title failed with error: {e}")
         return ""
@@ -136,10 +203,12 @@ def get_track_album_link(track: str, artist: str):
         if albumTitle == "":
             return ""
         else:
-            if " " in f"https://www.last.fm/music/{artist}/{albumTitle.replace(' ', '+')}":
+            url = f"https://www.last.fm/music/{artist}/{albumTitle.replace(' ', '+')}"
+            url = cleanURL(url)
+            if " " in url:
                 return ""
             
-            return f"https://www.last.fm/music/{artist}/{albumTitle.replace(' ', '+')}"
+            return url
     
     try:
         return link_from_track_info() or link_from_album_title()
@@ -208,8 +277,8 @@ def checkerThread(runByUI = False):
                 if not lastPlayingHash == hash(json.dumps(nowPlaying)):
                     # if track changed
                     if nowPlaying:
-                        track = nowPlaying["name"]
-                        artist = nowPlaying["artist"]["#text"]
+                        track: str = nowPlaying["name"]
+                        artist: str = nowPlaying["artist"]["#text"]
                         album = get_track_album_title(track, artist)
                         
                         # try:
@@ -223,7 +292,7 @@ def checkerThread(runByUI = False):
                                 #"length": length,
                                 #"human": f"{artist} - {track}{", from " + str(album) if not album == "" else ""}",
                                 "link": get_track_link(track, artist),
-                                "top": f"{track}",
+                                "top": f"{track.zfill(3).replace('0', " ")}",
                                 "bottom": f"By {artist}, From {album}" if not album == "" else f"By {artist}",
                                 }
                         
@@ -235,7 +304,7 @@ def checkerThread(runByUI = False):
                     else:
                         track = ""
                         artist = ""
-                        current = {"track": None, "artist": "Nothing", "album": "Nothing", "length": "Nothing", "human": "Nothing", "link": "", "top": "Nothing", "bottom": "Nothing"}
+                        current = {"track": None, "artist": "Nothing", "album": "Nothing", "length": "Nothing", "human": "Nothing", "link": "", "top": "Nothing", "bottom": "Nothing", "coverInternet": "default", "albumLink": ""}
                         
                     print(f"changed song to {current['top']} \n{current['bottom']}")
                     
@@ -249,9 +318,9 @@ def checkerThread(runByUI = False):
                     lastPlayingHash = hash(json.dumps(nowPlaying))
                     
                 iteratonsSinceLastSongChange += 1
-                print(f"checked - waiting {min(iteratonsSinceLastSongChange / 2, 10):.2f} seconds")
+                print(f"checked - waiting {min(iteratonsSinceLastSongChange / 2, 5):.2f} seconds")
                 if runByUI:
-                    signals.signals_.checkedSignal.emit(float(f"{min(iteratonsSinceLastSongChange / 2, 10):.2f}"))
+                    signals.signals_.checkedSignal.emit(float(f"{min(iteratonsSinceLastSongChange / 2, 5):.2f}"))
                 
                 time.sleep(min(iteratonsSinceLastSongChange / 2, 5))
             elif runByUI:
@@ -264,8 +333,8 @@ def checkerThread(runByUI = False):
             
 def createPresence(runByUi):
     global presence
-    
     try:
+        print("Creating new presence")
         presence = discordrp.Presence("1221181347071000637")
     except Exception as e:
         signals.signals_.handleErrorSignal.emit(signals.Errors.presenceCreationError)
@@ -312,15 +381,17 @@ def pureSetPresence(currentRaw):
         
     presence.set(pres)
     
-def createSetPresence(currentRaw, runByUi):
+def createSetPresence(currentRaw: dict, runByUi):
     global presence
     try:
+        print("Creating new presence in csp")
         presence = discordrp.Presence("1221181347071000637")
         pureSetPresence(currentRaw)
         
     except Exception as e:
         if runByUi:
             print("Throwing error " + str(e))
+            print(currentRaw)
             createError("There was an error creating the rich prescence", "There was an error creating the rich prescence. The application will now exit")
         else:
             raise e
