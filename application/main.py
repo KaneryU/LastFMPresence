@@ -39,6 +39,8 @@ class Language:
         self.messages = dict["messages"]
         self.actions = dict["actions"]
         self.tray = dict["tray"]
+    
+    
 
 
 
@@ -90,11 +92,12 @@ class songWidget(QWidget):
         self.layout_.addWidget(self.cover)
         self.layout_.addWidget(self.infoContainer)
         
-        self.setMaximumHeight(150)       
+        self.setMaximumHeight(150)
+        self.setMaximumWidth(500)
 
 
     def createTopLabel(self, song: dict):
-        if not self.getTextSize(f"<h1>{song['top']}</h1>").width() > self.width() - 100:        
+        if not self.getTextSize(f"<h1>{song['top']}</h1>").width() > 300:        
             self.topInfo = QLabel()
             self.topInfo.setTextFormat(Qt.TextFormat.RichText)
             self.topInfo.setText(f"<h1>{song['top']}</h1>")
@@ -102,12 +105,13 @@ class songWidget(QWidget):
             self.infoLayout.addWidget(self.topInfo)
         else:
             self.topInfo = MarqueeLabel(f"<h1>{song['top']}</h1>")
+            self.topInfo.speed = 3
             self.topInfo.setTextFormat(Qt.TextFormat.RichText)
             self.topInfo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             self.infoLayout.addWidget(self.topInfo)
             
     def createBottomLabel(self, song: dict):
-        if not self.getTextSize(f"<h2>{song['bottom']}</h2>").width() > self.width() - 100:
+        if not self.getTextSize(f"<h2>{song['bottom']}</h2>").width() > 300:
             self.bottomInfo = QLabel()
             self.bottomInfo.setTextFormat(Qt.TextFormat.RichText)
             self.bottomInfo.setText(f"<h2>{song['bottom']}</h2>")
@@ -115,6 +119,7 @@ class songWidget(QWidget):
             self.infoLayout.addWidget(self.bottomInfo)
         else:
             self.bottomInfo = MarqueeLabel(f"<h2>{song['bottom']}</h2>")
+            self.bottomInfo.speed = 3
             self.bottomInfo.setTextFormat(Qt.TextFormat.RichText)
             self.bottomInfo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             self.infoLayout.addWidget(self.bottomInfo)

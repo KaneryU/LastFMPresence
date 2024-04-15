@@ -189,7 +189,6 @@ def get_track_album_link(track: str, artist: str):
     # routes
     # get the album link from the track info
     # or make the album link from the album title and artist
-    
     def link_from_track_info():
         try:
             params = {"track": track, "artist": artist}
@@ -207,11 +206,27 @@ def get_track_album_link(track: str, artist: str):
             url = cleanURL(url)
             if " " in url:
                 return ""
-            
             return url
     
+    def link_from_search() -> str:
+        try:
+            params = {"album": get_track_album_title(track, artist)}
+            response = lastFMRequest(params, "album.search")
+            
+            if len(response["results"]["albummatches"]["album"]) == 0:
+                return ""
+            
+            returnedTitle: str = response["results"]["albummatches"]["album"][0]["name"]
+            returnedTitle = returnedTitle.lower()
+            if not returnedTitle == get_track_album_title(track, artist).lower():
+                return ""
+            else:
+                return response["results"]["albummatches"]["album"][0]["url"]
+        except:
+            return ""
     try:
-        return link_from_track_info() or link_from_album_title()
+        return (link_from_track_info() or link_from_search() or link_from_album_title())
+    
     except Exception as e:
         print(f"Get album link failed with error {e}")
         return ""
@@ -382,19 +397,16 @@ def pureSetPresence(currentRaw):
     presence.set(pres)
     
 def createSetPresence(currentRaw: dict, runByUi):
-    global presence
+    global presence, lastPlayingHash
     try:
         print("Creating new presence in csp")
         presence = discordrp.Presence("1221181347071000637")
         pureSetPresence(currentRaw)
         
     except Exception as e:
-        if runByUi:
-            print("Throwing error " + str(e))
-            print(currentRaw)
-            createError("There was an error creating the rich prescence", "There was an error creating the rich prescence. The application will now exit")
-        else:
-            raise e
+        print(str(e))
+        print(currentRaw)
+        lastPlayingHash = ""
 
 def setPresence(currentRaw, runByUI):
     global presence
