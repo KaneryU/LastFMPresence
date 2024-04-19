@@ -357,7 +357,12 @@ def createPresence(runByUi):
     
     return True
 
-def pureSetPresence(currentRaw):
+def shortenURL(url: str) -> str:
+    API = "https://tinyurl.com/api-create.php?url="
+    request = requests.get(API + url)
+    return request.text
+
+def pureSetPresence(currentRaw: dict):
     pres = {
             "state": currentRaw["bottom"],
             "details": currentRaw["top"],
@@ -369,6 +374,11 @@ def pureSetPresence(currentRaw):
                 "large_text": "Song cover",
             }
     }
+    
+    for i in [i for i in currentRaw.keys() if "link" in i.lower()]:
+        print(f"shortening url {i}")
+        if len(currentRaw[i]) > 500:
+            currentRaw[i] = shortenURL(currentRaw[i])
     
     if not currentRaw["link"] == "":
         pres.update({"buttons": [
@@ -386,7 +396,6 @@ def pureSetPresence(currentRaw):
             })
             
         else:
-            
             pres.update({"buttons": [
                 {
                     "label": "Album link",
@@ -400,6 +409,8 @@ def createSetPresence(currentRaw: dict, runByUi):
     global presence, lastPlayingHash
     try:
         print("Creating new presence in csp")
+        if not presence == None:
+            presence.close()
         presence = discordrp.Presence("1221181347071000637")
         pureSetPresence(currentRaw)
         

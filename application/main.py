@@ -93,11 +93,11 @@ class songWidget(QWidget):
         self.layout_.addWidget(self.infoContainer)
         
         self.setMaximumHeight(150)
-        self.setMaximumWidth(500)
+        self.setMaximumWidth(600)
 
 
     def createTopLabel(self, song: dict):
-        if not self.getTextSize(f"<h1>{song['top']}</h1>").width() > 300:        
+        if not self.getTextSize(f"<h1>{song['top']}</h1>").width() > self.maximumWidth() - 100:        
             self.topInfo = QLabel()
             self.topInfo.setTextFormat(Qt.TextFormat.RichText)
             self.topInfo.setText(f"<h1>{song['top']}</h1>")
@@ -110,8 +110,8 @@ class songWidget(QWidget):
             self.topInfo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             self.infoLayout.addWidget(self.topInfo)
             
-    def createBottomLabel(self, song: dict):
-        if not self.getTextSize(f"<h2>{song['bottom']}</h2>").width() > 300:
+    def createBottomLabel(self, song: dict): # TODO: fix the marquee label
+        if not self.getTextSize(f"<h2>{song['bottom']}</h2>").width() > self.maximumWidth() - 100:
             self.bottomInfo = QLabel()
             self.bottomInfo.setTextFormat(Qt.TextFormat.RichText)
             self.bottomInfo.setText(f"<h2>{song['bottom']}</h2>")
@@ -124,6 +124,24 @@ class songWidget(QWidget):
             self.bottomInfo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             self.infoLayout.addWidget(self.bottomInfo)
     
+    def getTextSize(self, txt: str) -> QSize:
+        temp = QLabel()
+        temp.setTextFormat(Qt.TextFormat.RichText)
+        temp.setFont(self.font())
+        temp.setStyleSheet(self.styleSheet())
+        temp.setText(txt)
+        
+        temp.update()
+        temp.updateGeometry()
+        temp.setParent(None)
+        
+        temp.setWindowFlags(Qt.WindowType.WindowDoesNotAcceptFocus | Qt.WindowType.WindowTransparentForInput)
+        temp.setWindowFlag(Qt.WindowType.Tool)
+        temp.setWindowOpacity(0)
+        
+        temp.show()
+        return temp.size()
+      
     def updateCover(self, coverPath):
         # Load the image
         image = QImage(coverPath)
@@ -161,14 +179,14 @@ class songWidget(QWidget):
         # Store the DownloadThread object in the list
         self.downloadThreads.append(downloadThread)
 
-    def getTextSize(self, text):
-        label = QLabel()
-        label.setTextFormat(Qt.TextFormat.RichText)
-        label.setText(text)
+    # def getTextSize(self, text):
+    #     label = QLabel()
+    #     label.setTextFormat(Qt.TextFormat.RichText)
+    #     label.setText(text)
         
-        fontMetrics = QFontMetrics(label.font())
-        textSize = fontMetrics.size(0, text)
-        return textSize
+    #     fontMetrics = QFontMetrics(label.font())
+    #     textSize = fontMetrics.size(0, text)
+    #     return textSize
 
 class Errors(enum.StrEnum):
     presenceCreationError = "pce"
