@@ -4,10 +4,12 @@ import json
 import time
 from math import floor
 import urllib.parse
+import enum
 
 # ext
 import discordrp
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, QTimer, QObject
+from PySide6.QtCore import Property as QProperty
 
 # local
 import signals
@@ -19,34 +21,29 @@ APIROOT = "http://ws.audioscrobbler.com/2.0/"
 def cleanURL(url: str):
     return urllib.parse.quote_plus(url, safe=":/")
 
-# class BaseError(Exception):
-#     def __init__(self, message: str):
-#         self.message = message
-
-#     def __str__(self):
-#         return self.message
-
-# class PresenceCreationError(BaseError):
-#     def __init__(self):
-#         super().__init__("There was an error creating the rich presence")
-
-# class PresenceSetError(BaseError):
-#     def __init__(self):
-#         super().__init__("There was an error setting the rich presence")
+# class lastFMContact(QObject):
     
-# class InternetConnectionError(BaseError):
+#     internetConnectionStatusChanged = Signal(bool)
+#     lastFMConnectionStatusChanged = Signal(bool)
+    
 #     def __init__(self):
-#         super().__init__("There was an error connecting to the internet")
+#         self.internetConnectionStatus = True
+#         self.lastFMConnectionStatus = True
+    
+#     def setICS(self, status: bool):
+#         self.internetConnectionStatus = status
+    
+#     def setLFCS(self, status: bool):
+#         self.lastFMConnectionStatus = status
+    
+#     def getICS(self):
+#         return self.internetConnectionStatus
 
-# class LastFMConnectionError(BaseError):
-#     def __init__(self):
-#         super().__init__("There was an error connecting to LastFM")
-
-
-
-# class lastFMContact:
-#     def __init__(self):
-#         self
+#     def getLFCS(self):
+#         return self.lastFMConnectionStatus
+    
+#     internetConnectionStatus = QProperty(bool, getICS, setICS, notify=internetConnectionStatusChanged)
+#     lastFMConnectionStatus = QProperty(bool, getLFCS, setLFCS, notify=lastFMConnectionStatusChanged)
     
 #     def checkInternet(self):
 #         try:
@@ -73,14 +70,116 @@ def cleanURL(url: str):
 #             dict: The response from last.fm
 #         """
 #         if not self.checkInternet():
-#             raise InternetConnectionError()
+#             self.internetConnectionStatus = False
 
 #         if not self.checkLastFM():
-#             raise LastFMConnectionError()
+#             self.internetConnectionStatus = False
         
 #         params.update({"api_key": APIKEY, "format": "json", "method": method})
 #         response = requests.get(APIROOT, params=params)
 #         return json.loads(response.text)
+
+# class discordConnectionStatuses(enum.StrEnum):
+#     CONNECTED = "Connected"
+#     DISCONNECTED = "Disconnected"
+    
+#     CONNECTING = "Connecting"
+    
+#     FAILED = "Failed"
+#     RETRYING = "Retrying"
+#     RETRYING_SET = "Retrying set"
+    
+#     NO_PRESENCE_SET = "No presence set"
+
+# class discordConnectionFailedReasons(enum.IntEnum):
+#     NONE = -1
+#     PRESENCE_CREATION_ERROR = 0
+#     PRESENCE_SET_ERROR = 1
+#     DISCORD_CLOSED_ERROR = 2
+    
+#     RETRY_TIMER_ERROR = 3
+# class discordRPC(QObject):
+#     discordConnectionStatusChanged = Signal(tuple[discordConnectionStatuses, discordConnectionFailedReasons])
+    
+#     def __init__(self):
+#         self.discordConnectionStatus = (discordConnectionStatuses.DISCONNECTED, discordConnectionFailedReasons.NONE)
+        
+#         self.retryConnectionTimer = QTimer()
+#         self.retryConnectionTimer.setInterval(10_000)
+#         self.retryConnectionTimer.timeout.connect(self.retry)
+        
+#         self.retrySetTimer = QTimer()
+#         self.retrySetTimer.setInterval(5_000)
+#         self.retrySetDict = None
+#         self.retrySetTimer.timeout.connect(self.retrySet)
+        
+#         self.presence = None
+        
+
+
+#     def setDCS(self, status: tuple[discordConnectionStatuses, discordConnectionFailedReasons]):
+#         self.discordConnectionStatus = status
+    
+#     def getDCS(self):
+#         return self.discordConnectionStatus
+
+#     discordConnectionStatus = QProperty(tuple[discordConnectionStatuses, discordConnectionFailedReasons], getDCS, setDCS, notify=discordConnectionStatusChanged)
+    
+#     def retry(self):
+#         self.discordConnectionStatus = (discordConnectionStatuses.RETRYING, self.discordConnectionStatus[1])
+#         self.connect()
+    
+#     def connect(self):
+#         self.discordConnectionStatus = (discordConnectionStatuses.CONNECTING, discordConnectionFailedReasons.NONE)
+        
+#         try:
+#             self.presence = discordrp.Presence("1221181347071000637")
+        
+#         except discordrp.ClientIDError:
+#             self.discordConnectionStatus = (discordConnectionStatuses.FAILED, discordConnectionFailedReasons.PRESENCE_CREATION_ERROR)
+            
+#         except discordrp.PresenceError as e:
+#             if e.code == 1000: # unknown error
+#                 self.discordConnectionStatus = (discordConnectionStatuses.FAILED, discordConnectionFailedReasons.PRESENCE_CREATION_ERROR)
+
+#             self.retryConnectionTimer.start()
+            
+#         except Exception as e:
+#             self.discordConnectionStatus = (discordConnectionStatuses.FAILED, discordConnectionFailedReasons.PRESENCE_CREATION_ERROR)
+#             self.retryConnectionTimer.start()
+
+#     def retrySet(self):
+#         if self.retrySetDict == None:
+#             self.discordConnectionStatus = (discordConnectionStatuses.NO_PRESENCE_SET, discordConnectionFailedReasons.RETRY_TIMER_ERROR)
+#             return
+        
+#         self.discordConnectionStatus = (discordConnectionStatuses.RETRYING_SET, self.discordConnectionStatus[1])
+#         self.set(self.retrySetDict)
+        
+#     def set(self, presence: dict):
+#         try:
+#             if self.presence == None:
+#                 self.connect()
+        
+#             self.presence.set(presence)
+            
+#         except discordrp.PresenceError as e:
+#             if e.code == 1000:
+#                 self.discordConnectionStatus = (discordConnectionStatuses.FAILED, discordConnectionFailedReasons.PRESENCE_SET_ERROR)
+            
+#             self.retrySetDict = presence
+#             self.retrySetTimer.start()
+        
+#         except Exception as e:
+#             self.discordConnectionStatus = (discordConnectionStatuses.FAILED, discordConnectionFailedReasons.PRESENCE_SET_ERROR)
+            
+#             self.retrySetDict = presence
+#             self.retrySetTimer.start()
+        
+        
+#     def close(self):
+#         self.presence.close()
+#         self.discordConnectionStatus = (discordConnectionStatuses.DISCONNECTED, discordConnectionFailedReasons.NONE)
 
 def lastFMRequest(params: dict, method: str):
     try:
@@ -258,6 +357,9 @@ createError: Signal = None
 paused: bool = False
 running: bool = True
 
+def pad(string: str, length: int):
+    return string.ljust(length, " ")
+
 def forceUpdate():
     global lastPlayingHash
     lastPlayingHash = ""
@@ -307,7 +409,7 @@ def checkerThread(runByUI = False):
                                 #"length": length,
                                 #"human": f"{artist} - {track}{", from " + str(album) if not album == "" else ""}",
                                 "link": get_track_link(track, artist),
-                                "top": f"{track.zfill(3).replace('0', " ")}",
+                                "top": f"{pad(track, 3)}",
                                 "bottom": f"By {artist}, From {album}" if not album == "" else f"By {artist}",
                                 }
                         

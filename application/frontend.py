@@ -8,12 +8,12 @@ import platform
 # import time
 import requests
 #external imports
-from PySide6.QtWidgets import *
-from PySide6.QtGui import *
-from PySide6.QtCore import *
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QMainWindow, QLabel, QHBoxLayout, QScrollArea, QStatusBar, QSystemTrayIcon, QMenu, QApplication, QInputDialog, QMessageBox, QSizePolicy
+from PySide6.QtGui import QIcon, QImage, QPixmap, QPainter, QPainterPath, QBrush, QAction
+from PySide6.QtCore import Qt, Signal, QSize, QThread, QTimer, Slot
 import discordrp
 #local imports
-import lfmrp
+import backend as backend
 from marq import MarqueeLabel
 import signals
 import dialogs
@@ -40,9 +40,6 @@ class Language:
         self.actions = dict["actions"]
         self.tray = dict["tray"]
     
-    
-
-
 
 class DownloadThread(QThread):
     signal = Signal(str)
@@ -194,7 +191,6 @@ class Errors(enum.StrEnum):
     
 class MainWindow(QMainWindow):
     
-    
     def __init__(self):
         super().__init__()
         
@@ -236,7 +232,7 @@ class MainWindow(QMainWindow):
         if settings.settings.username == "":
             self.changeUser()
                 
-        self.checkThread = threading.Thread(target=lfmrp.checkerThread, daemon=True, args=(True,))
+        self.checkThread = threading.Thread(target=backend.checkerThread, daemon=True, args=(True,))
         self.checkThread.start()
         
         self.menuBar_ = self.menuBar()
@@ -284,7 +280,7 @@ class MainWindow(QMainWindow):
                 dialog.exec()
         
     def tryCreatingPresence(self):
-        result = lfmrp.createPresence()
+        result = backend.createPresence()
         if result == True:
             self.resume()
             self.retryTimer.stop()
@@ -305,18 +301,18 @@ class MainWindow(QMainWindow):
         inputDialog.setWindowIcon(QIcon("assets/Icon.png"))
         inputDialog.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
         inputDialog.setLabelText("Enter your Last.fm username:")
-        inputDialog.textValueSelected.connect(lfmrp.changeUser)
+        inputDialog.textValueSelected.connect(backend.changeUser)
         inputDialog.exec()
     
     @Slot()
     def pause(self):
-        lfmrp.pause()
+        backend.pause()
         actions.resume.setEnabled(True)
         actions.pause.setEnabled(False)
     
     @Slot()
     def resume(self):
-        lfmrp.resume()
+        backend.resume()
         actions.resume.setEnabled(False)
         actions.pause.setEnabled(True)
     
@@ -336,13 +332,13 @@ class MainWindow(QMainWindow):
         event.ignore()
     
     def realClose(self):
-        lfmrp.running = False
+        backend.running = False
         
         self.hide() # hide all traces of the window incase the checkThread takes a while to stop
         systemTray.hide()
         self.checkThread.join()
         
-        lfmrp.presence.close()
+        backend.presence.close()
         app.exit()
     
     @Slot()
@@ -383,7 +379,7 @@ if __name__ == '__main__':
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     
     app = QApplication(sys.argv)
-    lfmrp.createError = createError
+    backend.createError = createError
     
     
     window = MainWindow()
@@ -398,7 +394,7 @@ if __name__ == '__main__':
     actions.resume.triggered.connect(window.resume)
     actions.exit.triggered.connect(window.realClose)
     actions.changeUser.triggered.connect(window.changeUser)
-    actions.forceRefresh.triggered.connect(lfmrp.forceUpdate)
+    actions.forceRefresh.triggered.connect(backend.forceUpdate)
     actions.clearList.triggered.connect(window.clearList)
     actions.clearList.setToolTip("Clear the recently played list")
     

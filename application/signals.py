@@ -8,11 +8,11 @@ class Errors(enum.StrEnum):
 class Signals(QObject):
     _instance = None  # Private variable to store the instance
 
-    updateSignal: Signal = Signal(dict)
-    checkedSignal: Signal = Signal(float)
-    pausePulseSignal: Signal = Signal()
-    createErrorSignal: Signal = Signal(str, str)
-    handleErrorSignal: Signal = Signal(Errors)
+    updateSignal: Signal = Signal(dict) # Signal emitted when the backend has updated the currently playing song
+    checkedSignal: Signal = Signal(float) # Signal emitted when the backend has checked the currently playing song
+    pausePulseSignal: Signal = Signal() # Signal emitted occasionaly when checking is paused
+    createErrorSignal: Signal = Signal(str, str) # Signal emitted when a fatal error occurs in the backend
+    handleErrorSignal: Signal = Signal(Errors) # Signal emitted when a non-fatal error occurs in the backend
 
     # def __init__(self):
     #     print("Created")
