@@ -8,3 +8,4 @@ application/dist/
 application/build/
 application/deployment
 settings
+*.code-workspace
