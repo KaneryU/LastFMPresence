@@ -23,7 +23,6 @@ ApplicationWindow {
         }
 
         function onStatusChanged(status_) {
-            print(status_)
             status.text = status_
         }
     }
